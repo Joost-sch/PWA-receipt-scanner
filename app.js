@@ -9,16 +9,14 @@ let cropper = null;
 // Helper: Screen Navigation
 // ==========================================
 function switchScreen(screenId) {
-    // Hide all screens
     document.querySelectorAll('.screen').forEach(screen => {
         screen.classList.remove('active');
     });
-    // Show target screen
     document.getElementById(screenId).classList.add('active');
 }
 
 // ==========================================
-// Screen 1 -> Screen 2: Handle File Selection
+// Screen 1 -> Screen 2: Handle File Selection (BULLETPROOF VERSION)
 // ==========================================
 document.getElementById('receiptImage').addEventListener('change', function(e) {
     const file = e.target.files[0];
@@ -27,23 +25,27 @@ document.getElementById('receiptImage').addEventListener('change', function(e) {
     const reader = new FileReader();
     reader.onload = function(event) {
         const imgElement = document.getElementById('imageToCrop');
-        imgElement.src = event.target.result;
         
-        // Move to Screen 2
-        switchScreen('screen2');
+        // CRITICAL FIX: Wait until the image element physically finishes rendering the source
+        imgElement.onload = function() {
+            // 1. Move to Screen 2 safely
+            switchScreen('screen2');
 
-        // Initialize Cropper
-        if (cropper) { cropper.destroy(); }
-        cropper = new Cropper(imgElement, {
-            viewMode: 1, 
-            dragMode: 'crop',
-            background: false,
-            autoCropArea: 0.8 
-        });
+            // 2. Initialize Cropper now that dimensions are 100% known to the browser
+            if (cropper) { cropper.destroy(); }
+            cropper = new Cropper(imgElement, {
+                viewMode: 1, 
+                dragMode: 'crop',
+                background: false,
+                autoCropArea: 0.8 
+            });
+        };
+
+        // Trigger the image load
+        imgElement.src = event.target.result;
     };
     reader.readAsDataURL(file);
     
-    // Reset file input so the same file can be selected again if needed
     e.target.value = ''; 
 });
 
@@ -65,7 +67,6 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
 
     const croppedCanvas = cropper.getCroppedCanvas();
     
-    // UI Loading State
     loadingText.style.display = 'block';
     scanBtn.disabled = true;
     cancelBtn.disabled = true;
@@ -109,21 +110,18 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
             itemList.appendChild(row);
         });
 
-        // Reset the save button UI for the new screen
         const saveBtn = document.getElementById('saveBtn');
         saveBtn.innerText = "Save to Pantry";
         saveBtn.style.backgroundColor = "#2196F3";
         saveBtn.disabled = false;
         document.getElementById('startOverBtn').style.display = 'none';
 
-        // Move to Screen 3
         switchScreen('screen3');
 
     } catch (error) {
         console.error(error);
         alert('Failed to scan receipt. Please try again.');
     } finally {
-        // Reset Screen 2 UI in case they come back to it
         loadingText.style.display = 'none';
         scanBtn.disabled = false;
         cancelBtn.disabled = false;
@@ -187,7 +185,6 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
         if (response.ok) {
             saveBtn.innerText = "Saved Successfully!";
             saveBtn.style.backgroundColor = "#4CAF50"; 
-            // Show the start over button so they can scan another receipt
             startOverBtn.style.display = 'block'; 
         } else {
             throw new Error(`Server responded with status: ${response.status}`);
@@ -201,7 +198,6 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     }
 });
 
-// Start Over Logic
 document.getElementById('startOverBtn').addEventListener('click', () => {
     switchScreen('screen1');
 });
