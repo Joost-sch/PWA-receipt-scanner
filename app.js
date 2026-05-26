@@ -24,34 +24,48 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
     itemList.innerHTML = '';
     document.getElementById('scanBtn').disabled = true;
 
-    try {
-        // Run Tesseract OCR
-        const result = await Tesseract.recognize(imageFile, 'eng', {
-            logger: m => console.log(m) // Logs progress in console
+  try {
+        // 1. Change 'eng' to 'nld' (Dutch)
+        const result = await Tesseract.recognize(imageFile, 'nld', {
+            logger: m => console.log(m)
         });
 
-        // Clean and process the extracted text
         const textLines = result.data.text.split('\n');
         
-        // Filter out empty lines or garbage characters (basic cleanup)
-        const validItems = textLines.filter(line => line.trim().length > 2);
+        // 2. Smarter Filtering
+        const validItems = textLines.filter(line => {
+            const trimmed = line.trim();
+            // Ignore very short lines
+            if (trimmed.length < 5) return false;
+            // Ignore common receipt headers/footers
+            const lowerLine = trimmed.toLowerCase();
+            if (lowerLine.includes('albert heijn') || 
+                lowerLine.includes('telefoon') || 
+                lowerLine.includes('subtotaal') ||
+                lowerLine.includes('bonuskaart') ||
+                lowerLine.includes('uw voordeel')) {
+                return false;
+            }
+            return true;
+        });
 
         // Populate the UI
         validItems.forEach((item, index) => {
             const row = document.createElement('div');
             row.className = 'item-row';
 
-            // Item Name
             const span = document.createElement('span');
             span.className = 'item-text';
-            span.innerText = item.trim();
+            
+            // Clean up the weird exclamation marks at the start of lines
+            let cleanText = item.trim().replace(/^!/g, '1'); 
+            span.innerText = cleanText;
 
-            // Categorization Dropdown
             const select = document.createElement('select');
             select.innerHTML = `
                 <option value="common">Common/Household</option>
                 <option value="individual">Individual/Dinner</option>
-                <option value="ignore">Ignore (Not a grocery)</option>
+                <option value="ignore">Ignore</option>
             `;
 
             row.appendChild(span);
@@ -60,6 +74,8 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
         });
 
         resultsArea.style.display = 'block';
+
+    }
 
     } catch (error) {
         console.error(error);
