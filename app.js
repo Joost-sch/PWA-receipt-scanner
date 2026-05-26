@@ -24,10 +24,10 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
     itemList.innerHTML = '';
     document.getElementById('scanBtn').disabled = true;
 
-  try {
+    try {
         // 1. Change 'eng' to 'nld' (Dutch)
         const result = await Tesseract.recognize(imageFile, 'nld', {
-            logger: m => console.log(m)
+            logger: m => console.log(m) // Logs progress in console
         });
 
         const textLines = result.data.text.split('\n');
@@ -75,6 +75,7 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
 
         resultsArea.style.display = 'block';
 
+    // THIS is the part I accidentally left out last time!
     } catch (error) {
         console.error(error);
         alert('Failed to scan receipt. Please try again with a clearer photo.');
