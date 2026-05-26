@@ -104,3 +104,75 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
         document.getElementById('scanBtn').disabled = false;
     }
 });
+
+// 3. Handle Saving to TU/e Data Foundry
+document.getElementById('saveBtn').addEventListener('click', async () => {
+    const saveBtn = document.getElementById('saveBtn');
+    const itemRows = document.querySelectorAll('.item-row');
+    
+    // 1. Gather all the items the user categorized
+    let parsedGroceries = [];
+    
+    itemRows.forEach(row => {
+        const itemName = row.querySelector('.item-text').innerText;
+        const category = row.querySelector('select').value;
+        
+        // Only save items that aren't marked as "ignore"
+        if (category !== 'ignore') {
+            parsedGroceries.push({
+                item: itemName,
+                category: category
+            });
+        }
+    });
+
+    // If there is nothing to save, warn the user and stop
+    if (parsedGroceries.length === 0) {
+        alert("No valid groceries to save!");
+        return;
+    }
+
+    // UI Feedback: Let the user know it is working
+    saveBtn.innerText = "Saving to Database...";
+    saveBtn.disabled = true;
+
+    // 2. Prepare the data payload for TU/e Data Foundry
+    var customData = { 
+        groceries: parsedGroceries,
+        scannedAt: new Date().toISOString() // Adds a timestamp
+    };
+
+    var jsonBody = {
+        activity: 'RECEIPT_SCAN', // You can change this activity name
+        source_id: 'PWA_Prototype_Web', // You can change this device/source name
+        data: JSON.stringify(customData)
+    };
+
+    // 3. Send the HTTP POST request
+    try {
+        const response = await fetch('https://data.id.tue.nl/api/v1/datasets/ts/21720/SWFvWmFJNmpBeStTNy8yd2UvQ1hmMEhkMitEY25GV3FBM3VkaEZ5Rm9uaz0=', {
+            method: 'POST',
+            mode: 'cors',
+            cache: 'no-cache',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            redirect: 'follow',
+            referrerPolicy: 'no-referrer',
+            body: JSON.stringify(jsonBody)
+        });
+
+        if (response.ok) {
+            saveBtn.innerText = "Saved Successfully!";
+            saveBtn.style.backgroundColor = "#4CAF50"; // Turn button green
+        } else {
+            throw new Error('Network response was not ok');
+        }
+
+    } catch (error) {
+        console.error("Database Error:", error);
+        alert("Failed to save to the database. Check your internet connection.");
+        saveBtn.innerText = "Try Saving Again";
+        saveBtn.disabled = false;
+    }
+});
