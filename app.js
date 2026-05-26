@@ -6,7 +6,19 @@ if ('serviceWorker' in navigator) {
 let cropper = null;
 
 // ==========================================
-// 1. Handle File Selection & Setup Cropper
+// Helper: Screen Navigation
+// ==========================================
+function switchScreen(screenId) {
+    // Hide all screens
+    document.querySelectorAll('.screen').forEach(screen => {
+        screen.classList.remove('active');
+    });
+    // Show target screen
+    document.getElementById(screenId).classList.add('active');
+}
+
+// ==========================================
+// Screen 1 -> Screen 2: Handle File Selection
 // ==========================================
 document.getElementById('receiptImage').addEventListener('change', function(e) {
     const file = e.target.files[0];
@@ -17,12 +29,11 @@ document.getElementById('receiptImage').addEventListener('change', function(e) {
         const imgElement = document.getElementById('imageToCrop');
         imgElement.src = event.target.result;
         
-        document.getElementById('cropContainer').style.display = 'block';
-        document.getElementById('scanBtn').style.display = 'block';
-        document.getElementById('resultsArea').style.display = 'none';
+        // Move to Screen 2
+        switchScreen('screen2');
 
+        // Initialize Cropper
         if (cropper) { cropper.destroy(); }
-
         cropper = new Cropper(imgElement, {
             viewMode: 1, 
             dragMode: 'crop',
@@ -31,25 +42,34 @@ document.getElementById('receiptImage').addEventListener('change', function(e) {
         });
     };
     reader.readAsDataURL(file);
+    
+    // Reset file input so the same file can be selected again if needed
+    e.target.value = ''; 
+});
+
+// Cancel Cropping (Go back to Screen 1)
+document.getElementById('cancelCropBtn').addEventListener('click', () => {
+    switchScreen('screen1');
 });
 
 // ==========================================
-// 2. Handle Cropping and Scanning (Tesseract)
+// Screen 2 -> Screen 3: Cropping & Scanning
 // ==========================================
 document.getElementById('scanBtn').addEventListener('click', async () => {
     if (!cropper) return;
 
     const loadingText = document.getElementById('loading');
-    const resultsArea = document.getElementById('resultsArea');
-    const itemList = document.getElementById('itemList');
     const scanBtn = document.getElementById('scanBtn');
+    const cancelBtn = document.getElementById('cancelCropBtn');
+    const itemList = document.getElementById('itemList');
 
     const croppedCanvas = cropper.getCroppedCanvas();
     
+    // UI Loading State
     loadingText.style.display = 'block';
-    resultsArea.style.display = 'none';
-    itemList.innerHTML = '';
     scanBtn.disabled = true;
+    cancelBtn.disabled = true;
+    itemList.innerHTML = '';
 
     try {
         const result = await Tesseract.recognize(croppedCanvas, 'nld', {
@@ -89,28 +109,33 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
             itemList.appendChild(row);
         });
 
-        resultsArea.style.display = 'block';
-        
-        // Reset the save button
+        // Reset the save button UI for the new screen
         const saveBtn = document.getElementById('saveBtn');
         saveBtn.innerText = "Save to Pantry";
         saveBtn.style.backgroundColor = "#2196F3";
         saveBtn.disabled = false;
+        document.getElementById('startOverBtn').style.display = 'none';
+
+        // Move to Screen 3
+        switchScreen('screen3');
 
     } catch (error) {
         console.error(error);
-        alert('Failed to scan receipt.');
+        alert('Failed to scan receipt. Please try again.');
     } finally {
+        // Reset Screen 2 UI in case they come back to it
         loadingText.style.display = 'none';
         scanBtn.disabled = false;
+        cancelBtn.disabled = false;
     }
 });
 
 // ==========================================
-// 3. Handle Saving to TU/e Data Foundry
+// Screen 3: Handle Saving to TU/e Data Foundry
 // ==========================================
 document.getElementById('saveBtn').addEventListener('click', async () => {
     const saveBtn = document.getElementById('saveBtn');
+    const startOverBtn = document.getElementById('startOverBtn');
     const itemRows = document.querySelectorAll('.item-row');
     
     let parsedGroceries = [];
@@ -162,6 +187,8 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
         if (response.ok) {
             saveBtn.innerText = "Saved Successfully!";
             saveBtn.style.backgroundColor = "#4CAF50"; 
+            // Show the start over button so they can scan another receipt
+            startOverBtn.style.display = 'block'; 
         } else {
             throw new Error(`Server responded with status: ${response.status}`);
         }
@@ -172,4 +199,9 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
         saveBtn.innerText = "Try Saving Again";
         saveBtn.disabled = false;
     }
+});
+
+// Start Over Logic
+document.getElementById('startOverBtn').addEventListener('click', () => {
+    switchScreen('screen1');
 });
