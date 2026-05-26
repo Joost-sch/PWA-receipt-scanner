@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Grocery Scanner</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; }
+        .btn { background-color: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin-top: 10px; }
+        .btn:disabled { background-color: #ccc; cursor: not-allowed; }
+        .item-row { display: flex; justify-content: space-between; align-items: center; background: #f9f9f9; padding: 10px; margin-bottom: 8px; border-radius: 5px; border: 1px solid #eee; }
+        .item-text { flex-grow: 1; margin-right: 15px; }
+        select { padding: 5px; border-radius: 4px; }
+        #loading { display: none; color: #ff9800; font-weight: bold; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <h2>Scan Receipt</h2>
+    <p>Take a photo of your receipt to extract groceries and categorize them.</p>
+
+    <input type="file" id="receiptImage" accept="image/*" capture="environment">
+    <br>
+    <button id="scanBtn" class="btn">Scan Receipt</button>
+    <p id="loading">Scanning... Please wait, this might take a minute.</p>
+
+    <div id="resultsArea" style="display:none; margin-top: 20px;">
+        <h3>Categorize Items</h3>
+        <div id="itemList"></div>
+        <button class="btn" style="background-color: #2196F3; width: 100%;">Save to Pantry</button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+    <script src="app.js"></script>
+
+</body>
+</html>
