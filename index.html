@@ -11,18 +11,18 @@
     <style>
         body { font-family: system-ui, -apple-system, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; background-color: #f4f7f6; }
         
-        /* Screen Management */
+        /* Screen Navigation Framework */
         .screen { display: none; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .screen.active { display: block; animation: fadeIn 0.3s; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* General Styles */
+        /* Typography & Interfaces */
         h2 { margin-top: 0; color: #333; }
         .btn { background-color: #4CAF50; color: white; padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; width: 100%; margin-top: 15px; }
         .btn-secondary { background-color: #9e9e9e; margin-top: 10px; }
         .btn:disabled { background-color: #ccc; cursor: not-allowed; }
         
-        /* List Styles */
+        /* Generated Item Lists */
         .item-row { display: flex; justify-content: space-between; align-items: center; background: #f9f9f9; padding: 12px; margin-bottom: 8px; border-radius: 8px; border: 1px solid #eee; }
         .item-text { flex-grow: 1; margin-right: 15px; font-weight: bold; font-size: 14px;}
         select { padding: 8px; border-radius: 6px; border: 1px solid #ccc; background: white; }
@@ -31,7 +31,7 @@
         #cropContainer { margin-top: 15px; margin-bottom: 15px; max-height: 60vh; overflow: hidden; }
         #imageToCrop { max-width: 100%; display: block; }
 
-        /* Custom File Input Styling */
+        /* Camera Upload Button Wrapper */
         input[type="file"] { display: none; }
         .file-upload-label { display: block; background: #2196F3; color: white; padding: 15px; text-align: center; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 20px;}
     </style>
@@ -71,4 +71,15 @@
         <button id="startOverBtn" class="btn btn-secondary" style="display: none;">Scan Another Receipt</button>
     </div>
 
-    <script src
+    <script>
+        alert("🎉 Success: The browser is reading your absolute newest HTML file!");
+        console.log("Diagnostic: HTML file is active.");
+    </script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+    
+    <script src="app.js"></script>
+
+</body>
+</html>
