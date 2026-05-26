@@ -75,8 +75,6 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
 
         resultsArea.style.display = 'block';
 
-    }
-
     } catch (error) {
         console.error(error);
         alert('Failed to scan receipt. Please try again with a clearer photo.');
