@@ -160,7 +160,7 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
 
         const saveBtn = document.getElementById('saveBtn');
         saveBtn.innerText = "Save to Pantry";
-        saveBtn.style.backgroundColor = "#2196F3";
+        saveBtn.style.backgroundColor = "#84bc41";
         saveBtn.disabled = false;
         document.getElementById('startOverBtn').style.display = 'none';
 
@@ -240,7 +240,7 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
         if (response.ok) {
             console.log('🎉 Data successfully recorded by database!');
             saveBtn.innerText = "Saved Successfully!";
-            saveBtn.style.backgroundColor = "#4CAF50"; 
+            saveBtn.style.backgroundColor = "#84bc41"; 
             startOverBtn.style.display = 'block'; 
         } else {
             throw new Error(`Server responded with status: ${response.status}`);
