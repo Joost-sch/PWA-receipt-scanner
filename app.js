@@ -5,7 +5,9 @@ if ('serviceWorker' in navigator) {
 
 let cropper = null; // Variable to hold the Cropper instance
 
+// ==========================================
 // 1. Handle File Selection & Setup Cropper
+// ==========================================
 document.getElementById('receiptImage').addEventListener('change', function(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -20,27 +22,30 @@ document.getElementById('receiptImage').addEventListener('change', function(e) {
         document.getElementById('scanBtn').style.display = 'block';
         document.getElementById('resultsArea').style.display = 'none';
 
-        // Destroy the old cropper if it exists (if the user picks a new photo)
+        // Destroy the old cropper if it exists
         if (cropper) { cropper.destroy(); }
 
         // Initialize Cropper.js
         cropper = new Cropper(imgElement, {
-            viewMode: 1, // Restrict crop box to not exceed canvas size
+            viewMode: 1, 
             dragMode: 'crop',
             background: false,
-            autoCropArea: 0.8 // Start with a fairly large crop box
+            autoCropArea: 0.8 
         });
     };
     reader.readAsDataURL(file);
 });
 
-// 2. Handle Cropping and Scanning
+// ==========================================
+// 2. Handle Cropping and Scanning (Tesseract)
+// ==========================================
 document.getElementById('scanBtn').addEventListener('click', async () => {
     if (!cropper) return;
 
     const loadingText = document.getElementById('loading');
     const resultsArea = document.getElementById('resultsArea');
     const itemList = document.getElementById('itemList');
+    const scanBtn = document.getElementById('scanBtn');
 
     // Get the cropped image as a Canvas object
     const croppedCanvas = cropper.getCroppedCanvas();
@@ -49,7 +54,7 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
     loadingText.style.display = 'block';
     resultsArea.style.display = 'none';
     itemList.innerHTML = '';
-    document.getElementById('scanBtn').disabled = true;
+    scanBtn.disabled = true;
 
     try {
         // Feed the Cropped Canvas directly to Tesseract
@@ -59,7 +64,7 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
 
         const textLines = result.data.text.split('\n');
         
-        // Smarter Filtering (Kept from previous step)
+        // Smarter Filtering
         const validItems = textLines.filter(line => {
             const trimmed = line.trim();
             if (trimmed.length < 3) return false;
@@ -78,7 +83,7 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
             const span = document.createElement('span');
             span.className = 'item-text';
             
-            // Basic clean up: Force weird leading characters back to numbers if needed
+            // Clean up: Force weird leading characters back to numbers
             let cleanText = item.trim().replace(/^[\!\|ïi\]\']/g, '1').replace(/^z /g, '2 ');
             span.innerText = cleanText;
 
@@ -95,22 +100,30 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
         });
 
         resultsArea.style.display = 'block';
+        
+        // Reset the save button text/color just in case they are scanning a second receipt
+        const saveBtn = document.getElementById('saveBtn');
+        saveBtn.innerText = "Save to Pantry";
+        saveBtn.style.backgroundColor = "#2196F3";
+        saveBtn.disabled = false;
 
     } catch (error) {
         console.error(error);
         alert('Failed to scan receipt. Please try again.');
     } finally {
         loadingText.style.display = 'none';
-        document.getElementById('scanBtn').disabled = false;
+        scanBtn.disabled = false;
     }
 });
 
+// ==========================================
 // 3. Handle Saving to TU/e Data Foundry
+// ==========================================
 document.getElementById('saveBtn').addEventListener('click', async () => {
     const saveBtn = document.getElementById('saveBtn');
     const itemRows = document.querySelectorAll('.item-row');
     
-    // 1. Gather all the items the user categorized
+    // Gather all the items the user categorized
     let parsedGroceries = [];
     
     itemRows.forEach(row => {
@@ -136,19 +149,19 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     saveBtn.innerText = "Saving to Database...";
     saveBtn.disabled = true;
 
-    // 2. Prepare the data payload for TU/e Data Foundry
+    // Prepare the data payload for TU/e Data Foundry
     var customData = { 
         groceries: parsedGroceries,
-        scannedAt: new Date().toISOString() // Adds a timestamp
+        scannedAt: new Date().toISOString() 
     };
 
     var jsonBody = {
-        activity: 'RECEIPT_SCAN', // You can change this activity name
-        source_id: 'PWA_Prototype_Web', // You can change this device/source name
+        activity: 'RECEIPT_SCAN', 
+        source_id: 'PWA_Prototype_Web', 
         data: JSON.stringify(customData)
     };
 
-    // 3. Send the HTTP POST request
+    // Send the HTTP POST request
     try {
         const response = await fetch('https://data.id.tue.nl/api/v1/datasets/ts/21720/SWFvWmFJNmpBeStTNy8yd2UvQ1hmMEhkMitEY25GV3FBM3VkaEZ5Rm9uaz0=', {
             method: 'POST',
