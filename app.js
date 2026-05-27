@@ -1,10 +1,14 @@
+// Register Service Worker
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').then(() => console.log('Service Worker Registered'));
 }
 
 let cropper = null;
-let extractedGroceries = []; // We will store Gemini's output here
+let extractedGroceries = []; // Store Gemini's output here for the database
 
+// ==========================================
+// Helper: Screen Navigation
+// ==========================================
 function switchScreen(screenId) {
     document.querySelectorAll('.screen').forEach(screen => {
         screen.classList.remove('active');
@@ -13,12 +17,21 @@ function switchScreen(screenId) {
 }
 
 // ==========================================
-// File Selection & Cropper
+// Screen 1 -> Screen 2: Handle File Selection
 // ==========================================
 document.getElementById('receiptImage').addEventListener('change', function(e) {
     const apiKey = document.getElementById('apiKey').value.trim();
+    
+    // Ensure they entered an API key
     if (!apiKey) {
         alert("Please paste your Gemini API Key before continuing.");
+        e.target.value = ''; 
+        return;
+    }
+    
+    // Safety Check: Google API keys always start with AIza
+    if (!apiKey.startsWith('AIza')) {
+        alert("Invalid API Key! A valid Google API key always starts with 'AIza'. Please check what you copied from Google AI Studio.");
         e.target.value = ''; 
         return;
     }
@@ -30,8 +43,10 @@ document.getElementById('receiptImage').addEventListener('change', function(e) {
     reader.onload = function(event) {
         const imgElement = document.getElementById('imageToCrop');
         
+        // Wait until the image element physically finishes rendering
         imgElement.onload = function() {
             switchScreen('screen2');
+
             if (cropper) { cropper.destroy(); }
             cropper = new Cropper(imgElement, {
                 viewMode: 1, 
@@ -46,12 +61,13 @@ document.getElementById('receiptImage').addEventListener('change', function(e) {
     e.target.value = ''; 
 });
 
+// Cancel Cropping (Go back to Screen 1)
 document.getElementById('cancelCropBtn').addEventListener('click', () => {
     switchScreen('screen1');
 });
 
 // ==========================================
-// Send to Gemini AI
+// Screen 2 -> Screen 3: Send to Gemini AI
 // ==========================================
 document.getElementById('scanBtn').addEventListener('click', async () => {
     if (!cropper) return;
@@ -89,7 +105,7 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
     };
 
     try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody)
@@ -142,7 +158,7 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
 });
 
 // ==========================================
-// Save to TU/e Database
+// Screen 3: Save to TU/e Database
 // ==========================================
 document.getElementById('saveBtn').addEventListener('click', async () => {
     const saveBtn = document.getElementById('saveBtn');
@@ -156,7 +172,6 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     saveBtn.innerText = "Saving to Database...";
     saveBtn.disabled = true;
 
-    // Use the perfectly formatted JSON array directly from Gemini
     var customData = { 
         groceries: extractedGroceries,
         scannedAt: new Date().toISOString() 
@@ -194,7 +209,8 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     }
 });
 
+// Start Over Logic
 document.getElementById('startOverBtn').addEventListener('click', () => {
     switchScreen('screen1');
-    document.getElementById('receiptImage').value = ''; // Reset file input
+    document.getElementById('receiptImage').value = ''; 
 });
