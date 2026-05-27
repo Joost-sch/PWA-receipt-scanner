@@ -1,13 +1,10 @@
-// Register Service Worker
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').then(() => console.log('Service Worker Registered'));
 }
 
 let cropper = null;
+let extractedGroceries = []; // We will store Gemini's output here
 
-// ==========================================
-// Helper: Screen Navigation
-// ==========================================
 function switchScreen(screenId) {
     document.querySelectorAll('.screen').forEach(screen => {
         screen.classList.remove('active');
@@ -16,9 +13,16 @@ function switchScreen(screenId) {
 }
 
 // ==========================================
-// Screen 1 -> Screen 2: Handle File Selection
+// File Selection & Cropper
 // ==========================================
 document.getElementById('receiptImage').addEventListener('change', function(e) {
+    const apiKey = document.getElementById('apiKey').value.trim();
+    if (!apiKey) {
+        alert("Please paste your Gemini API Key before continuing.");
+        e.target.value = ''; 
+        return;
+    }
+
     const file = e.target.files[0];
     if (!file) return;
 
@@ -28,7 +32,6 @@ document.getElementById('receiptImage').addEventListener('change', function(e) {
         
         imgElement.onload = function() {
             switchScreen('screen2');
-
             if (cropper) { cropper.destroy(); }
             cropper = new Cropper(imgElement, {
                 viewMode: 1, 
@@ -37,75 +40,89 @@ document.getElementById('receiptImage').addEventListener('change', function(e) {
                 autoCropArea: 0.8 
             });
         };
-
         imgElement.src = event.target.result;
     };
     reader.readAsDataURL(file);
     e.target.value = ''; 
 });
 
-// Cancel Cropping (Go back to Screen 1)
 document.getElementById('cancelCropBtn').addEventListener('click', () => {
     switchScreen('screen1');
 });
 
 // ==========================================
-// Screen 2 -> Screen 3: Cropping & Scanning
+// Send to Gemini AI
 // ==========================================
 document.getElementById('scanBtn').addEventListener('click', async () => {
     if (!cropper) return;
 
+    const apiKey = document.getElementById('apiKey').value.trim();
     const loadingText = document.getElementById('loading');
     const scanBtn = document.getElementById('scanBtn');
     const cancelBtn = document.getElementById('cancelCropBtn');
     const itemList = document.getElementById('itemList');
 
     const croppedCanvas = cropper.getCroppedCanvas();
+    const base64Image = croppedCanvas.toDataURL('image/jpeg').split(',')[1];
     
     loadingText.style.display = 'block';
     scanBtn.disabled = true;
     cancelBtn.disabled = true;
     itemList.innerHTML = '';
 
+    const promptText = `
+        You are a smart grocery parser. Look at this cropped receipt.
+        Extract the grocery items and their quantities. 
+        Categorize each item as exactly "common" (for general household/pantry staples like milk, toilet paper, butter) or "individual" (for specific dinner ingredients like meat, vegetables, pasta).
+        Ignore store names, phone numbers, subtotals, and prices.
+        Return ONLY a raw JSON array of objects. Do not use markdown code blocks.
+        Example format: [{"item": "Rundergehakt", "quantity": "1", "category": "individual"}]
+    `;
+
+    const requestBody = {
+        contents: [{
+            parts: [
+                { text: promptText },
+                { inline_data: { mime_type: "image/jpeg", data: base64Image } }
+            ]
+        }]
+    };
+
     try {
-        const result = await Tesseract.recognize(croppedCanvas, 'nld', {
-            logger: m => console.log(m) 
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
         });
 
-        const textLines = result.data.text.split('\n');
+        if (!response.ok) throw new Error("API Request Failed. Check your API Key.");
+
+        const data = await response.json();
         
-        const validItems = textLines.filter(line => {
-            const trimmed = line.trim();
-            if (trimmed.length < 3) return false;
-            const lowerLine = trimmed.toLowerCase();
-            if (lowerLine.includes('albert heijn') || lowerLine.includes('telefoon') || lowerLine.includes('subtotaal')) {
-                return false;
-            }
-            return true;
-        });
+        // Clean up response in case Gemini includes markdown ```json formatting
+        let rawText = data.candidates[0].content.parts[0].text;
+        rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+        
+        extractedGroceries = JSON.parse(rawText);
 
-        validItems.forEach((item) => {
+        // Populate the UI with read-only data
+        extractedGroceries.forEach((grocery) => {
             const row = document.createElement('div');
             row.className = 'item-row';
 
-            const span = document.createElement('span');
-            span.className = 'item-text';
-            let cleanText = item.trim().replace(/^[\!\|ïi\]\']/g, '1').replace(/^z /g, '2 ');
-            span.innerText = cleanText;
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'item-text';
+            nameSpan.innerText = `${grocery.quantity}x ${grocery.item}`;
 
-            const select = document.createElement('select');
-            select.innerHTML = `
-                <option value="common">Common/Household</option>
-                <option value="individual">Individual/Dinner</option>
-                <option value="ignore">Ignore</option>
-            `;
+            const tagSpan = document.createElement('span');
+            tagSpan.className = 'item-category';
+            tagSpan.innerText = grocery.category;
 
-            row.appendChild(span);
-            row.appendChild(select);
+            row.appendChild(nameSpan);
+            row.appendChild(tagSpan);
             itemList.appendChild(row);
         });
 
-        // Reset the save button color back to your custom green (#84bc41)
         const saveBtn = document.getElementById('saveBtn');
         saveBtn.innerText = "Save to Pantry";
         saveBtn.style.backgroundColor = "#84bc41";
@@ -116,7 +133,7 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
 
     } catch (error) {
         console.error(error);
-        alert('Failed to scan receipt. Please try again.');
+        alert('Failed to process with Gemini. Please try again or check your API key.');
     } finally {
         loadingText.style.display = 'none';
         scanBtn.disabled = false;
@@ -125,28 +142,13 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
 });
 
 // ==========================================
-// Screen 3: Handle Saving to TU/e Data Foundry
+// Save to TU/e Database
 // ==========================================
 document.getElementById('saveBtn').addEventListener('click', async () => {
     const saveBtn = document.getElementById('saveBtn');
     const startOverBtn = document.getElementById('startOverBtn');
-    const itemRows = document.querySelectorAll('.item-row');
-    
-    let parsedGroceries = [];
-    
-    itemRows.forEach(row => {
-        const itemName = row.querySelector('.item-text').innerText;
-        const category = row.querySelector('select').value;
-        
-        if (category !== 'ignore') {
-            parsedGroceries.push({
-                item: itemName,
-                category: category
-            });
-        }
-    });
 
-    if (parsedGroceries.length === 0) {
+    if (extractedGroceries.length === 0) {
         alert("No valid groceries to save!");
         return;
     }
@@ -154,8 +156,9 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     saveBtn.innerText = "Saving to Database...";
     saveBtn.disabled = true;
 
+    // Use the perfectly formatted JSON array directly from Gemini
     var customData = { 
-        groceries: parsedGroceries,
+        groceries: extractedGroceries,
         scannedAt: new Date().toISOString() 
     };
 
@@ -166,21 +169,17 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     };
 
     try {
-        const response = await fetch('https://data.id.tue.nl/api/v1/datasets/ts/21720/SWFvWmFJNmpBeStTNy8yd2UvQ1hmMEhkMitEY25GV3FBM3VkaEZ5Rm9uaz0=', {
+        const response = await fetch('[https://data.id.tue.nl/api/v1/datasets/ts/21720/SWFvWmFJNmpBeStTNy8yd2UvQ1hmMEhkMitEY25GV3FBM3VkaEZ5Rm9uaz0=](https://data.id.tue.nl/api/v1/datasets/ts/21720/SWFvWmFJNmpBeStTNy8yd2UvQ1hmMEhkMitEY25GV3FBM3VkaEZ5Rm9uaz0=)', {
             method: 'POST',
             mode: 'cors',
             cache: 'no-cache',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            redirect: 'follow',
-            referrerPolicy: 'no-referrer',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(jsonBody)
         });
 
         if (response.ok) {
             saveBtn.innerText = "Saved Successfully!";
-            saveBtn.style.backgroundColor = "#45a049"; // Slightly darker green for successful save status
+            saveBtn.style.backgroundColor = "#45a049"; 
             startOverBtn.style.display = 'block'; 
         } else {
             throw new Error(`Server responded with status: ${response.status}`);
@@ -190,11 +189,12 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
         console.error("Database Error:", error);
         alert("Failed to save. Check the developer console for details.");
         saveBtn.innerText = "Try Saving Again";
-        saveBtn.style.backgroundColor = "#84bc41"; // Revert to theme green on error
+        saveBtn.style.backgroundColor = "#84bc41"; 
         saveBtn.disabled = false;
     }
 });
 
 document.getElementById('startOverBtn').addEventListener('click', () => {
     switchScreen('screen1');
+    document.getElementById('receiptImage').value = ''; // Reset file input
 });
