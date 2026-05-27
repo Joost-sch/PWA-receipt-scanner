@@ -11,28 +11,26 @@
     <style>
         body { font-family: system-ui, -apple-system, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; background-color: #f4f7f6; }
         
-        /* Screen Navigation Framework */
         .screen { display: none; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .screen.active { display: block; animation: fadeIn 0.3s; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Typography & Interfaces */
         h2 { margin-top: 0; color: #333; }
-        /* Main Button Style Updated to #84bc41 */
         .btn { background-color: #84bc41; color: white; padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; width: 100%; margin-top: 15px; }
         .btn-secondary { background-color: #9e9e9e; margin-top: 10px; }
         .btn:disabled { background-color: #ccc; cursor: not-allowed; }
         
-        /* Generated Item Lists */
+        /* New styling for API Key Input */
+        .api-input { width: 100%; padding: 10px; margin-top: 10px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; font-family: monospace;}
+        
         .item-row { display: flex; justify-content: space-between; align-items: center; background: #f9f9f9; padding: 12px; margin-bottom: 8px; border-radius: 8px; border: 1px solid #eee; }
         .item-text { flex-grow: 1; margin-right: 15px; font-weight: bold; font-size: 14px;}
-        select { padding: 8px; border-radius: 6px; border: 1px solid #ccc; background: white; }
+        .item-category { background: #e0e0e0; padding: 4px 8px; border-radius: 12px; font-size: 12px; color: #555; }
         
         #loading { display: none; color: #ff9800; font-weight: bold; margin-top: 15px; text-align: center; }
         #cropContainer { margin-top: 15px; margin-bottom: 15px; max-height: 60vh; overflow: hidden; }
         #imageToCrop { max-width: 100%; display: block; }
 
-        /* Camera Upload Button Wrapper Updated to #84bc41 */
         input[type="file"] { display: none; }
         .file-upload-label { display: block; background: #84bc41; color: white; padding: 15px; text-align: center; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 20px;}
     </style>
@@ -40,9 +38,11 @@
 <body>
 
     <div id="screen1" class="screen active">
-        <h2>Step 1: Scan Receipt</h2>
-        <p>Take a clear photo of your receipt. Ensure the text is well-lit and readable.</p>
+        <h2>Step 1: Setup & Scan</h2>
+        <p>Enter your temporary API Key, then scan your receipt.</p>
         
+        <input type="password" id="apiKey" class="api-input" placeholder="Paste Gemini API Key here...">
+
         <label class="file-upload-label">
             Open Camera / Gallery
             <input type="file" id="receiptImage" accept="image/*" capture="environment">
@@ -51,20 +51,20 @@
 
     <div id="screen2" class="screen">
         <h2>Step 2: Crop</h2>
-        <p>Drag the corners to frame <b>only the quantities and item names</b>. Leave out the prices!</p>
+        <p>Frame the items and quantities. The AI will handle the rest.</p>
         
         <div id="cropContainer">
             <img id="imageToCrop" src="">
         </div>
 
-        <button id="scanBtn" class="btn">Analyze Receipt</button>
+        <button id="scanBtn" class="btn">Analyze with AI</button>
         <button id="cancelCropBtn" class="btn btn-secondary">Cancel</button>
-        <p id="loading">Scanning cropped area... This might take a minute.</p>
+        <p id="loading">AI is reading the receipt... Please wait.</p>
     </div>
 
     <div id="screen3" class="screen">
-        <h2>Step 3: Review</h2>
-        <p>Categorize your groceries for the smart meal planner.</p>
+        <h2>Step 3: Review AI Output</h2>
+        <p>The AI has extracted and automatically categorized these items.</p>
         
         <div id="itemList"></div>
         
@@ -73,8 +73,6 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
-    
     <script src="app.js"></script>
 
 </body>
